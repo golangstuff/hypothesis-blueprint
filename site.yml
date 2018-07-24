@@ -1,0 +1,139 @@
+# Ansible Playbook for Subutai Dokuwiki blueprint
+---
+
+- hosts: all
+  gather_facts: false
+  remote_user: root
+  tasks: 
+    - name: Install tools
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items: 
+        - nginx
+        - ca-certificates
+        - git
+        - python-dev
+        - python-pip
+        - python-virtualenv
+        - libffi-dev
+        - libevent-dev
+        - libfontconfig 
+        - libpq-dev
+        - libssl-dev
+        - npm
+        - postgresql-server-dev-all
+      update_cache: yes
+      dpkg_options: force-confdef,force-confold,force-unsafe-io
+
+    - name: Clean up
+      file:
+        path: /var/lib/hypothesis
+        state: absent
+
+    - name: Get package
+      git:
+        repo: https://github.com/hypothesis/h
+        dest: /var/lib/hypothesis
+        depth: 1
+    
+    - name: Create user
+      user:
+        name: hypothesis
+        shell: /bin/false
+        home: /var/lib/hypothesis
+        create_home: no
+        system: yes
+
+    - name: Set file permissions
+      file:
+        dest: {{ item }}
+        owner: hypothesis
+        group: hypothesis
+        recurse: yes
+      with_items:
+        - /var/lib/hypothesis
+        - /var/log/nginx
+        - /var/lib/nginx
+        - /var/tmp/nginx
+
+    - name: Upgrade pip and virtualenv
+      pip:
+        name: {{ item }}
+        state: latest
+        chdir: /var/lib/hypothesis
+      with_items:
+        - pip
+        - virtualenv
+
+    - name: Upgrade npm
+      npm: 
+        name: npm
+        global: yes
+        state: latest
+    
+    - name: Install gulp
+      npm:
+        name: gulp-cli
+        global: yes
+        state: present
+
+    - name: Install requirements
+      pip:
+        requirements: /var/lib/hypothesis/requirements.txt
+    
+    - name: Copy nginx.conf
+      copy:
+        src: etc/nginx.conf
+        dest: /etc/nginx/nginx.conf
+        user: root
+        group: root
+        mode: 0644
+
+    - name: Restart nginx
+      systemd:
+        name: nginx.sevice
+        enabled: yes
+        state: restarted
+
+    - name: Create directories for collectd
+      file:
+        path: /etc/collectd/collectd.conf.d
+        state: directory
+        owner: hypothesis
+        group: hypothesis     
+        
+    - name: Copy service files
+      copy:
+        src: {{ item }}
+        dest: /etc/systemd/system/
+        owner: root
+        group: root
+        mode: 0644
+      with_items:
+        - etc/systemd/hypothesis-web.service
+        - etc/systemd/hypothesis-ws.service
+        - etc/systemd/hypothesis-worker.service
+
+    - name: Start web service
+      systemd:
+        daemon_reload: yes
+        name: hypothesis-web.service
+        enabled: yes
+        state: started
+
+    - name: Start websocket service
+      systemd:
+        daemon_reload: yes
+        name: hypothesis-ws.service
+        enabled: yes
+        state: started
+
+    - name: Start worker service
+      systemd:
+        daemon_reload: yes
+        name: hypothesis-worker.service
+        enabled: yes
+        state: started
+
+# vim: ts=2 et nowrap autoindent

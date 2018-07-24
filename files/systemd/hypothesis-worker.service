@@ -1,0 +1,17 @@
+[Unit]
+Description=Hypothesis Annotating Server
+Requires=hypothesis-web.service
+Requires=hypothesis-ws.service
+
+[Service]
+Environment="PATH=/var/lib/hypothesis/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONIOENCODING=utf_8"
+Environment="PYTHONPATH=/var/lib/hypothesis"
+Environment="NEW_RELIC_CONFIG_FILE=/var/lib/hypothesis/conf/app.ini"
+User=hypothesis
+ExecStart=/usr/local/bin/newrelic-admin run-program hypothesis celery worker
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+Alias=hypothesis.service

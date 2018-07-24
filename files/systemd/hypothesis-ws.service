@@ -1,0 +1,15 @@
+[Unit]
+Description=Hypothesis WebSocket Backend
+After=hypothesis-web.service
+
+[Service]
+Environment="PATH=/var/lib/hypothesis/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONIOENCODING=utf_8"
+Environment="PYTHONPATH=/var/lib/hypothesis"
+Environment="GUNICORN_STATS_DISABLE=1"
+User=hypothesis
+ExecStart=/usr/local/bin/gunicorn --paste /var/lib/hypothesis/conf/websocket.ini --name websocket --worker-connections 4096 -b unix:/tmp/gunicorn-websocket.sock
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
